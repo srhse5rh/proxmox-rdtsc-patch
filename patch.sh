@@ -1,17 +1,17 @@
 #!/bin/bash
 
-linux_git_repo="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
-linux_git_branch="linux-rolling-lts"
-cpu_brand=$(grep -m 1 'vendor_id' /proc/cpuinfo | cut -c13-)
+# linux_git_repo="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+# linux_git_branch="linux-rolling-lts"
+# cpu_brand=$(grep -m 1 'vendor_id' /proc/cpuinfo | cut -c13-)
 
-git clone --branch $linux_git_branch $linux_git_repo
+# git clone --branch $linux_git_branch $linux_git_repo
 
-if [ $cpu_brand = "AuthenticAMD" ] && [ -z $(grep -r "EDITED BY SED" "$(pwd)/linux/arch/x86/kvm/svm/svm.c") ]; then
-  line_1=$(( $(grep -n "kvm_handle_invpcid(vcpu, type, gva);" linux/arch/x86/kvm/svm/svm.c | awk '{print $1;}' | cut -f1 -d ':')+2))
+if [ -z "$(grep -r "EDITED BY SED" "$(pwd)/submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c")" ]; then
+  line_1=$(( $(grep -n "kvm_handle_invpcid(vcpu, type, gva);" submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c | cut -f1 -d ':')+2))
   sed -i "${line_1}a\
 \
 /* EDITED BY SED */\n\
-u32 print_once = 1;\n\
+static u32 print_once = 1;\n\
 static int handle_rdtsc_interception(struct kvm_vcpu *vcpu)\n\
 {\n\
 	static u64 rdtsc_fake = 0;\n\
@@ -43,15 +43,17 @@ static int handle_rdtsc_interception(struct kvm_vcpu *vcpu)\n\
 	vcpu->arch.regs[VCPU_REGS_RDX] = (rdtsc_fake >> 32) & -1u;\n\
 \n\
 	return svm_skip_emulated_instruction(vcpu);\n\
-}" "$(pwd)/linux/arch/x86/kvm/svm/svm.c"
+}" "$(pwd)/submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c"
 
-  line_2=$(( $(grep -n "svm_set_intercept(svm, INTERCEPT_RSM);" linux/arch/x86/kvm/svm/svm.c | awk '{print $1;}' | cut -f1 -d ':')+0))
+  line_2=$(grep -n "svm_set_intercept(svm, INTERCEPT_RSM);" submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c | cut -f1 -d ':')
   sed -i "${line_2}a\
-	svm_set_intercept(svm, INTERCEPT_RDTSC);" "$(pwd)/linux/arch/x86/kvm/svm/svm.c"
-  line_3=$(( $(grep -n "SVM_EXIT_VMGEXIT" linux/arch/x86/kvm/svm/svm.c | awk '{print $1;}' | cut -f1 -d ':')+0))
+	svm_set_intercept(svm, INTERCEPT_RDTSC);" "$(pwd)/submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c"
+  line_3=$(grep -n "SVM_EXIT_VMGEXIT" submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c | cut -f1 -d ':')
   sed -i "${line_3}a\
-	[SVM_EXIT_RDTSC]			= handle_rdtsc_interception" "$(pwd)/linux/arch/x86/kvm/svm/svm.c"
-elif [ $cpu_brand = "GenuineIntel" ] && [ -z $(grep -r "EDITED BY SED" "$(pwd)linux/arch/x86/kvm/vmx/vmx.c") ]; then
+	[SVM_EXIT_RDTSC]			= handle_rdtsc_interception" "$(pwd)/submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c"
+fi
+
+if [ -z $(grep -r "EDITED BY SED" "$(pwd)/submodules/ubuntu-kernel/arch/x86/kvm/vmx/vmx.c") ]; then
 
   sed -i '5984a\
 \
@@ -88,8 +90,8 @@ static int handle_rdtsc(struct kvm_vcpu *vcpu) \
         vcpu->arch.regs[VCPU_REGS_RDX] = (rdtsc_fake >> 32) & -1u; \
 \
         return skip_emulated_instruction(vcpu); \
-}' "$(pwd)/linux/arch/x86/kvm/vmx/vmx.c"
+}' "$(pwd)/submodules/ubuntu-kernel/arch/x86/kvm/vmx/vmx.c"
 
   sed -i '6076a\
-        [EXIT_REASON_RDTSC]             = handle_rdtsc,' "$(pwd)/linux/arch/x86/kvm/vmx/vmx.c"
+        [EXIT_REASON_RDTSC]             = handle_rdtsc,' "$(pwd)/submodules/ubuntu-kernel/arch/x86/kvm/vmx/vmx.c"
 fi
