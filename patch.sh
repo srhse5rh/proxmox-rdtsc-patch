@@ -2,8 +2,7 @@
 
 echo '
 /* EDITED BY PATCH */
-static u32 print_once = 1;
-static int handle_rdtsc_interception(struct kvm_vcpu *vcpu)
+static int handle_rdtsc(struct kvm_vcpu *vcpu)
 {
 	static u64 rdtsc_fake = 0;
 	static u64 rdtsc_prev = 0;
@@ -20,7 +19,7 @@ static int handle_rdtsc_interception(struct kvm_vcpu *vcpu)
 		if(rdtsc_real > rdtsc_prev)
 		{
 			u64 diff = rdtsc_real - rdtsc_prev;
-			u64 fake_diff =  diff / 20; // if you have 3.2Ghz on your vm, change 20 to 16
+			u64 fake_diff =  diff / 16; // if you have 3.2Ghz on your vm, change 20 to 16
 			rdtsc_fake += fake_diff;
 		}
 	}
@@ -37,7 +36,7 @@ static int handle_rdtsc_interception(struct kvm_vcpu *vcpu)
 }
 
 static u32 print_once = 1;
-static int handle_rdtscp_interception(struct kvm_vcpu *vcpu)
+static int handle_rdtscp(struct kvm_vcpu *vcpu)
 {
 	static u64 rdtsc_fake = 0;
 	static u64 rdtsc_prev = 0;
@@ -54,7 +53,7 @@ static int handle_rdtscp_interception(struct kvm_vcpu *vcpu)
 		if(rdtsc_real > rdtsc_prev)
 		{
 			u64 diff = rdtsc_real - rdtsc_prev;
-			u64 fake_diff =  diff / 20; // if you have 3.2Ghz on your vm, change 20 to 16
+			u64 fake_diff =  diff / 16; // if you have 3.2Ghz on your vm, change 20 to 16
 			rdtsc_fake += fake_diff;
 		}
 	}
@@ -70,17 +69,18 @@ static int handle_rdtscp_interception(struct kvm_vcpu *vcpu)
 	return svm_skip_emulated_instruction(vcpu);
 }
 
-static int handle_umwait_interception(struct kvm_vcpu *vcpu)
+static int handle_umwait(struct kvm_vcpu *vcpu)
 {
-	kvm_skip_emulated_instruction(vcpu);
+	svm_skip_emulated_instruction(vcpu);
 	return 1;
 }
 
-static int handle_tpause_interception(struct kvm_vcpu *vcpu)
+static int handle_tpause(struct kvm_vcpu *vcpu)
 {
-	kvm_skip_emulated_instruction(vcpu);
+	svm_skip_emulated_instruction(vcpu);
 	return 1;
 }
+/* EDITED BY PATCH */
 ' >svm-patch-1
 
 echo '
@@ -89,24 +89,21 @@ echo '
 	svm_set_intercept(svm, INTERCEPT_RDSCP);
 	svm_set_intercept(svm, INTERCEPT_UMWAIT);
 	svm_set_intercept(svm, INTERCEPT_TPAUSE);
+	/* EDITED BY PATCH */
 ' >svm-patch-2
 
 echo '
 	/* EDITED BY PATCH */
-	[EXIT_REASON_RDTSC]			= handle_rdtsc_interception,
-	[EXIT_REASON_RDTSCP]			= handle_rdtscp_interception,
-	[EXIT_REASON_UMWAIT]			= handle_umwait_interception,
-	[EXIT_REASON_TPAUSE]			= handle_tpause_interception,
+	[EXIT_REASON_RDTSC]			= handle_rdtsc,
+	[EXIT_REASON_RDTSCP]			= handle_rdtscp,
+	[EXIT_REASON_UMWAIT]			= handle_umwait,
+	[EXIT_REASON_TPAUSE]			= handle_tpause,
+	/* EDITED BY PATCH */
 ' >svm-patch-3
 
 svmfile="submodules/ubuntu-kernel/arch/x86/kvm/svm/svm.c"
-vmxfile="submodules/ubuntu-kernel/arch/x86/kvm/vmx/vmx.c"
 
-sed -i '/return kvm_handle_invpcid/{
-    n
-    n
-    r svm-patch-1
-}' ${svmfile}
+sed -i -e '/const svm_exit_handlers/r svm-patch-1' -e //N ${svmfile}
 
 sed -i '/svm_set_intercept(svm, INTERCEPT_RSM)/r svm-patch-2' ${svmfile}
 
