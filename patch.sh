@@ -2,18 +2,12 @@
 
 echo '
 /* EDITED BY PATCH */
-static u32 print_once = 1;
 static int handle_rdtsc(struct kvm_vcpu *vcpu)
 {
 	static u64 rdtsc_fake = 0;
 	static u64 rdtsc_prev = 0;
 	u64 rdtsc_real = rdtsc();
-	if(print_once)
-	{
-		printk("[handle_rdtsc] fake rdtsc svm function is working");
-		print_once = 0;
-		rdtsc_fake = rdtsc_real;
-	}
+ 	printk_once("[handle_rdtsc] fake rdtsc svm function is working\n");
 
 	if(rdtsc_prev != 0)
 	{
@@ -42,12 +36,7 @@ static int handle_rdtscp(struct kvm_vcpu *vcpu)
 	static u64 rdtsc_fake = 0;
 	static u64 rdtsc_prev = 0;
 	u64 rdtsc_real = rdtsc();
-	if(print_once)
-	{
-		printk("[handle_rdtsc] fake handle_rdtscp svm function is working");
-		print_once = 0;
-		rdtsc_fake = rdtsc_real;
-	}
+	printk_once("[handle_rdtsc] fake rdtscp svm function is working\n");
 
 	if(rdtsc_prev != 0)
 	{
@@ -69,18 +58,6 @@ static int handle_rdtscp(struct kvm_vcpu *vcpu)
 
 	return svm_skip_emulated_instruction(vcpu);
 }
-
-static int handle_umwait(struct kvm_vcpu *vcpu)
-{
-	svm_skip_emulated_instruction(vcpu);
-	return 1;
-}
-
-static int handle_tpause(struct kvm_vcpu *vcpu)
-{
-	svm_skip_emulated_instruction(vcpu);
-	return 1;
-}
 /* EDITED BY PATCH */
 ' >svm-patch-1
 
@@ -88,8 +65,6 @@ echo '
 	/* EDITED BY PATCH */
 	svm_set_intercept(svm, INTERCEPT_RDTSC);
 	svm_set_intercept(svm, INTERCEPT_RDSCP);
-	svm_set_intercept(svm, INTERCEPT_UMWAIT);
-	svm_set_intercept(svm, INTERCEPT_TPAUSE);
 	/* EDITED BY PATCH */
 ' >svm-patch-2
 
@@ -97,8 +72,6 @@ echo '
 	/* EDITED BY PATCH */
 	[EXIT_REASON_RDTSC]			= handle_rdtsc,
 	[EXIT_REASON_RDTSCP]			= handle_rdtscp,
-	[EXIT_REASON_UMWAIT]			= handle_umwait,
-	[EXIT_REASON_TPAUSE]			= handle_tpause,
 	/* EDITED BY PATCH */
 ' >svm-patch-3
 
