@@ -2,6 +2,7 @@
 
 echo '
 /* EDITED BY PATCH */
+static u32 print_once = 1;
 static int handle_rdtsc(struct kvm_vcpu *vcpu)
 {
 	static u64 rdtsc_fake = 0;
