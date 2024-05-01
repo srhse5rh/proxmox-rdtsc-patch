@@ -2,7 +2,7 @@
 
 echo '
 /* EDITED BY PATCH */
-static int handle_rdtsc(struct kvm_vcpu *vcpu)
+static int handle_rdtsc_interception(struct kvm_vcpu *vcpu)
 {
 	static u64 rdtsc_fake = 0;
 	static u64 rdtsc_prev = 0;
@@ -35,14 +35,12 @@ static int handle_rdtsc(struct kvm_vcpu *vcpu)
 echo '
 	/* EDITED BY PATCH */
 	svm_set_intercept(svm, INTERCEPT_RDTSC);
-	svm_set_intercept(svm, INTERCEPT_RDSCP);
 	/* EDITED BY PATCH */
 ' >svm-patch-2
 
 echo '
 	/* EDITED BY PATCH */
-	[EXIT_REASON_RDTSC]			= handle_rdtsc,
-	[EXIT_REASON_RDTSCP]			= handle_rdtscp,
+	[SVM_EXIT_RDTSC]			= handle_rdtsc_interception,
 	/* EDITED BY PATCH */
 ' >svm-patch-3
 
